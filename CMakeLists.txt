@@ -20,6 +20,10 @@ add_executable(navigator_node
   src/navigator_node.cpp
 )
 
+add_executable(navigator_sim
+  src/navigator_sim.cpp
+)
+
 ament_target_dependencies(navigator_node
   rclcpp
   nav_msgs
@@ -30,8 +34,18 @@ ament_target_dependencies(navigator_node
   tf2_ros
 )
 
+ament_target_dependencies(navigator_sim
+  rclcpp
+  sensor_msgs
+  sura_msgs
+  geometry_msgs
+  tf2
+  tf2_ros
+)
+
 install(TARGETS
   navigator_node
+  navigator_sim
   DESTINATION lib/${PROJECT_NAME}
 )
 
