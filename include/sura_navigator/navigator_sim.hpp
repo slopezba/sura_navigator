@@ -25,6 +25,7 @@ private:
   static double wrapAngle(double angle);
 
   rclcpp::Publisher<sura_msgs::msg::Navigator>::SharedPtr navigator_pub_;
+  rclcpp::Publisher<sura_msgs::msg::Navigator>::SharedPtr legacy_navigator_pub_;
   rclcpp::Subscription<sensor_msgs::msg::Range>::SharedPtr altitude_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
 

@@ -20,6 +20,7 @@ NavigatorSim::NavigatorSim()
   this->declare_parameter<std::string>("parent_frame", "world_ned");
   this->declare_parameter<std::string>("child_frame", "sura/base_link");
   this->declare_parameter<std::string>("navigator_topic", "/sura/navigator/navigation");
+  this->declare_parameter<std::string>("legacy_navigator_topic", "");
   this->declare_parameter<std::string>("altitude_topic", "/sura/sensors/dvl/altitude");
   this->declare_parameter<double>("publish_rate", 50.0);
 
@@ -27,6 +28,8 @@ NavigatorSim::NavigatorSim()
   child_frame_ = this->get_parameter("child_frame").as_string();
   const std::string navigator_topic =
     this->get_parameter("navigator_topic").as_string();
+  const std::string legacy_navigator_topic =
+    this->get_parameter("legacy_navigator_topic").as_string();
   const std::string altitude_topic =
     this->get_parameter("altitude_topic").as_string();
   const double publish_rate =
@@ -34,6 +37,10 @@ NavigatorSim::NavigatorSim()
 
   navigator_pub_ = this->create_publisher<sura_msgs::msg::Navigator>(
     navigator_topic, 10);
+  if (!legacy_navigator_topic.empty()) {
+    legacy_navigator_pub_ = this->create_publisher<sura_msgs::msg::Navigator>(
+      legacy_navigator_topic, 10);
+  }
   altitude_sub_ = this->create_subscription<sensor_msgs::msg::Range>(
     altitude_topic, 10, std::bind(&NavigatorSim::altitudeCallback, this, std::placeholders::_1));
 
@@ -47,6 +54,10 @@ NavigatorSim::NavigatorSim()
   RCLCPP_INFO(
     this->get_logger(), "Reading TF: %s -> %s", parent_frame_.c_str(), child_frame_.c_str());
   RCLCPP_INFO(this->get_logger(), "Publishing: %s", navigator_topic.c_str());
+  if (!legacy_navigator_topic.empty()) {
+    RCLCPP_INFO(
+      this->get_logger(), "Publishing legacy navigator: %s", legacy_navigator_topic.c_str());
+  }
   RCLCPP_INFO(this->get_logger(), "Reading altitude: %s", altitude_topic.c_str());
 }
 
@@ -176,6 +187,9 @@ void NavigatorSim::publishFromTf()
   has_previous_velocity_ = true;
 
   navigator_pub_->publish(navigator_msg);
+  if (legacy_navigator_pub_) {
+    legacy_navigator_pub_->publish(navigator_msg);
+  }
 }
 
 void NavigatorSim::altitudeCallback(const sensor_msgs::msg::Range::SharedPtr msg)
