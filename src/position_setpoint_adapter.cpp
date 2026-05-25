@@ -24,7 +24,7 @@ public:
       "input_topic", "/sura/catamaran/body_position/setpoint_world");
     this->declare_parameter<std::string>(
       "output_topic", "/sura/catamaran/body_position/setpoint");
-    this->declare_parameter<std::string>("target_frame", "map");
+    this->declare_parameter<std::string>("target_frame", "blueboat/map");
     this->declare_parameter<double>("transform_timeout", 0.2);
 
     input_topic_ = this->get_parameter("input_topic").as_string();

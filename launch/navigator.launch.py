@@ -128,7 +128,7 @@ def generate_launch_description():
             DeclareLaunchArgument("odom_timeout", default_value="0.5"),
             DeclareLaunchArgument("setpoint_input_topic", default_value=""),
             DeclareLaunchArgument("setpoint_output_topic", default_value=""),
-            DeclareLaunchArgument("setpoint_target_frame", default_value="map"),
+            DeclareLaunchArgument("setpoint_target_frame", default_value="blueboat/map"),
             DeclareLaunchArgument("setpoint_transform_timeout", default_value="0.2"),
             OpaqueFunction(function=launch_setup),
         ]
