@@ -21,9 +21,9 @@ public:
     tf_listener_(tf_buffer_)
   {
     this->declare_parameter<std::string>(
-      "input_topic", "/sura/catamaran/body_position/setpoint_world");
+      "input_topic", "body_position/setpoint_world");
     this->declare_parameter<std::string>(
-      "output_topic", "/sura/catamaran/body_position/setpoint");
+      "output_topic", "controller/body_position/setpoint");
     this->declare_parameter<std::string>("target_frame", "blueboat/map");
     this->declare_parameter<double>("transform_timeout", 0.2);
 

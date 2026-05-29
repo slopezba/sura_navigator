@@ -55,13 +55,13 @@ NavigatorNode::NavigatorNode()
 : Node("sura_navigator"),
   tf_buffer_(this->get_clock())
 {
-  this->declare_parameter<std::string>("odom_topic", "/sura/localization/odometry");
+  this->declare_parameter<std::string>("odom_topic", "localization/odometry");
   this->declare_parameter<std::string>("twist_odom_topic", "");
-  this->declare_parameter<std::string>("altitude_topic", "/sura/sensors/dvl/altitude");
-  this->declare_parameter<std::string>("navigator_topic", "/sura/navigator/navigation");
+  this->declare_parameter<std::string>("altitude_topic", "sensors/dvl/altitude");
+  this->declare_parameter<std::string>("navigator_topic", "navigator/navigation");
   this->declare_parameter<std::string>("legacy_navigator_topic", "");
   this->declare_parameter<std::string>("parent_frame", "world_ned");
-  this->declare_parameter<std::string>("child_frame", "sura/base_link");
+  this->declare_parameter<std::string>("child_frame", "base_link");
   this->declare_parameter<bool>("odom_twist_in_body_frame", false);
   this->declare_parameter<bool>("odom_invert_angular_z", true);
   this->declare_parameter<bool>("twist_odom_twist_in_body_frame", true);

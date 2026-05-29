@@ -18,10 +18,10 @@ NavigatorSim::NavigatorSim()
   tf_buffer_(this->get_clock())
 {
   this->declare_parameter<std::string>("parent_frame", "world_ned");
-  this->declare_parameter<std::string>("child_frame", "sura/base_link");
-  this->declare_parameter<std::string>("navigator_topic", "/sura/navigator/navigation");
+  this->declare_parameter<std::string>("child_frame", "base_link");
+  this->declare_parameter<std::string>("navigator_topic", "navigator/navigation");
   this->declare_parameter<std::string>("legacy_navigator_topic", "");
-  this->declare_parameter<std::string>("altitude_topic", "/sura/sensors/dvl/altitude");
+  this->declare_parameter<std::string>("altitude_topic", "sensors/dvl/altitude");
   this->declare_parameter<double>("publish_rate", 50.0);
 
   parent_frame_ = this->get_parameter("parent_frame").as_string();
