@@ -1,9 +1,19 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, OpaqueFunction
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.actions import DeclareLaunchArgument, GroupAction, OpaqueFunction
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
+
+
+def bool_launch_arg(context, name):
+    value = LaunchConfiguration(name).perform(context).lower()
+    if value in ("true", "1", "yes", "on"):
+        return True
+    if value in ("false", "0", "no", "off"):
+        return False
+
+    raise RuntimeError(
+        f"Unsupported value '{value}' for launch argument '{name}'. Use true or false."
+    )
 
 
 def launch_setup(context, *args, **kwargs):
@@ -35,7 +45,9 @@ def launch_setup(context, *args, **kwargs):
     odom_topic = LaunchConfiguration("odom_topic").perform(context)
     if not odom_topic:
         odom_topic = (
-            "odometry/filtered"
+            "stonefish/odometry"
+            if environment == "sim"
+            else "odometry/filtered"
             if localization_frame_convention == "ned"
             else "localization/odometry"
         )
@@ -60,9 +72,11 @@ def launch_setup(context, *args, **kwargs):
     if not twist_odom_topic and environment == "sim":
         twist_odom_topic = "odometry"
 
-    use_sim_localization = environment == "sim" and localization == "sim"
-    executable = "navigator_sim" if use_sim_localization else "navigator_node"
-    node_name = "navigator_sim" if use_sim_localization else "sura_navigator"
+    publish_tf = (
+        environment == "sim"
+        and localization == "sim"
+        and bool_launch_arg(context, "publish_tf")
+    )
 
     parameters = {
         "altitude_topic": altitude_topic,
@@ -71,22 +85,17 @@ def launch_setup(context, *args, **kwargs):
         "parent_frame": LaunchConfiguration("parent_frame"),
         "child_frame": child_frame,
         "publish_rate": LaunchConfiguration("publish_rate"),
+        "odom_topic": odom_topic,
+        "twist_odom_topic": twist_odom_topic,
+        "odom_twist_in_body_frame": LaunchConfiguration("odom_twist_in_body_frame"),
+        "odom_invert_angular_z": LaunchConfiguration("odom_invert_angular_z"),
+        "twist_odom_twist_in_body_frame": LaunchConfiguration("twist_odom_twist_in_body_frame"),
+        "twist_odom_invert_angular_z": LaunchConfiguration("twist_odom_invert_angular_z"),
+        "linear_lpf_alpha": LaunchConfiguration("linear_lpf_alpha"),
+        "use_tf_fallback": LaunchConfiguration("use_tf_fallback"),
+        "publish_tf": publish_tf,
+        "odom_timeout": LaunchConfiguration("odom_timeout"),
     }
-
-    if not use_sim_localization:
-        parameters.update(
-            {
-                "odom_topic": odom_topic,
-                "twist_odom_topic": twist_odom_topic,
-                "odom_twist_in_body_frame": LaunchConfiguration("odom_twist_in_body_frame"),
-                "odom_invert_angular_z": LaunchConfiguration("odom_invert_angular_z"),
-                "twist_odom_twist_in_body_frame": LaunchConfiguration("twist_odom_twist_in_body_frame"),
-                "twist_odom_invert_angular_z": LaunchConfiguration("twist_odom_invert_angular_z"),
-                "linear_lpf_alpha": LaunchConfiguration("linear_lpf_alpha"),
-                "use_tf_fallback": LaunchConfiguration("use_tf_fallback"),
-                "odom_timeout": LaunchConfiguration("odom_timeout"),
-            }
-        )
 
     adapter_parameters = {
         "input_topic": LaunchConfiguration("setpoint_input_topic").perform(context)
@@ -102,8 +111,8 @@ def launch_setup(context, *args, **kwargs):
     nodes = [
         Node(
             package="sura_navigator",
-            executable=executable,
-            name=node_name,
+            executable="navigator_node",
+            name="sura_navigator",
             output="screen",
             parameters=[parameters],
         ),
@@ -115,24 +124,6 @@ def launch_setup(context, *args, **kwargs):
             parameters=[adapter_parameters],
         ),
     ]
-
-    if use_sim_localization:
-        nodes.append(
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    PathJoinSubstitution(
-                        [
-                            FindPackageShare("cirtesu_tank_aruco_localization"),
-                            "launch",
-                            "aruco_map_localization.launch.py",
-                        ]
-                    )
-                ),
-                launch_arguments=[
-                    ("robot_namespace", robot_namespace),
-                ],
-            )
-        )
 
     return [
         GroupAction(nodes),
@@ -157,6 +148,7 @@ def generate_launch_description():
             DeclareLaunchArgument("twist_odom_invert_angular_z", default_value="false"),
             DeclareLaunchArgument("linear_lpf_alpha", default_value="0.2"),
             DeclareLaunchArgument("use_tf_fallback", default_value="false"),
+            DeclareLaunchArgument("publish_tf", default_value="false"),
             DeclareLaunchArgument("parent_frame", default_value="world_ned"),
             DeclareLaunchArgument("child_frame", default_value=""),
             DeclareLaunchArgument("publish_rate", default_value="50.0"),

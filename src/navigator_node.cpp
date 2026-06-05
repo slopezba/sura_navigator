@@ -68,6 +68,7 @@ NavigatorNode::NavigatorNode()
   this->declare_parameter<bool>("twist_odom_invert_angular_z", false);
   this->declare_parameter<double>("linear_lpf_alpha", 0.2);
   this->declare_parameter<bool>("use_tf_fallback", false);
+  this->declare_parameter<bool>("publish_tf", false);
   this->declare_parameter<double>("publish_rate", 50.0);
   this->declare_parameter<double>("odom_timeout", 0.5);
 
@@ -81,6 +82,7 @@ NavigatorNode::NavigatorNode()
   parent_frame_ = this->get_parameter("parent_frame").as_string();
   child_frame_ = this->get_parameter("child_frame").as_string();
   use_tf_fallback_ = this->get_parameter("use_tf_fallback").as_bool();
+  publish_tf_ = this->get_parameter("publish_tf").as_bool();
   linear_lpf_alpha_ = std::max(
     0.0, this->get_parameter("linear_lpf_alpha").as_double());
   const double publish_rate = std::max(1.0, this->get_parameter("publish_rate").as_double());
@@ -107,6 +109,9 @@ NavigatorNode::NavigatorNode()
     std::bind(&NavigatorNode::handleAltitude, this, std::placeholders::_1));
 
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(tf_buffer_, this, false);
+  if (publish_tf_) {
+    tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+  }
 
   if (use_tf_fallback_) {
     tf_timer_ = this->create_wall_timer(
@@ -142,6 +147,7 @@ NavigatorNode::NavigatorNode()
       parent_frame_.c_str(),
       child_frame_.c_str());
   }
+  RCLCPP_INFO(this->get_logger(), "Publish odometry TF: %s", publish_tf_ ? "true" : "false");
 }
 
 double NavigatorNode::wrapAngle(double angle)
@@ -161,6 +167,8 @@ void NavigatorNode::handleOdometry(const nav_msgs::msg::Odometry::SharedPtr msg)
     this->now() :
     rclcpp::Time(msg->header.stamp);
 
+  publishTfFromOdometry(*msg);
+
   sura_msgs::msg::Navigator navigator_msg = buildNavigatorFromOdometry(*msg, stamp);
   updateAccelerations(navigator_msg, stamp);
   publishNavigator(navigator_msg);
@@ -172,6 +180,27 @@ void NavigatorNode::handleOdometry(const nav_msgs::msg::Odometry::SharedPtr msg)
 void NavigatorNode::handleAltitude(const sensor_msgs::msg::Range::SharedPtr msg)
 {
   altitude_ = msg->range;
+}
+
+void NavigatorNode::publishTfFromOdometry(const nav_msgs::msg::Odometry & odom_msg)
+{
+  if (!publish_tf_ || !tf_broadcaster_) {
+    return;
+  }
+
+  geometry_msgs::msg::TransformStamped transform;
+  transform.header = odom_msg.header;
+  if (transform.header.stamp.sec == 0 && transform.header.stamp.nanosec == 0) {
+    transform.header.stamp = this->now();
+  }
+  transform.header.frame_id = parent_frame_;
+  transform.child_frame_id = child_frame_;
+  transform.transform.translation.x = odom_msg.pose.pose.position.x;
+  transform.transform.translation.y = odom_msg.pose.pose.position.y;
+  transform.transform.translation.z = odom_msg.pose.pose.position.z;
+  transform.transform.rotation = odom_msg.pose.pose.orientation;
+
+  tf_broadcaster_->sendTransform(transform);
 }
 
 sura_msgs::msg::Navigator NavigatorNode::buildNavigatorFromOdometry(

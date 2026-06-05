@@ -13,6 +13,7 @@
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Vector3.h"
 #include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_broadcaster.h"
 #include "tf2_ros/transform_listener.h"
 
 namespace sura_navigator
@@ -28,6 +29,7 @@ private:
   void handleTwistOdometry(const nav_msgs::msg::Odometry::SharedPtr msg);
   void handleAltitude(const sensor_msgs::msg::Range::SharedPtr msg);
   void publishFromTf();
+  void publishTfFromOdometry(const nav_msgs::msg::Odometry & odom_msg);
   sura_msgs::msg::Navigator buildNavigatorFromOdometry(
     const nav_msgs::msg::Odometry & odom_msg,
     const rclcpp::Time & stamp);
@@ -57,6 +59,7 @@ private:
   std::string child_frame_;
   double linear_lpf_alpha_{0.2};
   bool use_tf_fallback_{false};
+  bool publish_tf_{false};
   double odom_timeout_{0.5};
   rclcpp::Time last_odom_stamp_{0, 0, RCL_ROS_TIME};
   bool has_odom_{false};
@@ -64,6 +67,7 @@ private:
 
   tf2_ros::Buffer tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
   bool has_previous_transform_{false};
   geometry_msgs::msg::TransformStamped previous_transform_;
