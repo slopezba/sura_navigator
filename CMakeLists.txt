@@ -17,19 +17,11 @@ find_package(tf2_ros REQUIRED)
 
 include_directories(include)
 
-add_executable(navigator_node
-  src/navigator_node.cpp
+add_executable(navigator
+  src/navigator.cpp
 )
 
-add_executable(navigator_sim
-  src/navigator_sim.cpp
-)
-
-add_executable(position_setpoint_adapter
-  src/position_setpoint_adapter.cpp
-)
-
-ament_target_dependencies(navigator_node
+ament_target_dependencies(navigator
   rclcpp
   nav_msgs
   sensor_msgs
@@ -40,27 +32,8 @@ ament_target_dependencies(navigator_node
   tf2_ros
 )
 
-ament_target_dependencies(navigator_sim
-  rclcpp
-  sensor_msgs
-  sura_msgs
-  geometry_msgs
-  tf2
-  tf2_ros
-)
-
-ament_target_dependencies(position_setpoint_adapter
-  rclcpp
-  geometry_msgs
-  tf2
-  tf2_geometry_msgs
-  tf2_ros
-)
-
 install(TARGETS
-  navigator_node
-  navigator_sim
-  position_setpoint_adapter
+  navigator
   DESTINATION lib/${PROJECT_NAME}
 )
 
