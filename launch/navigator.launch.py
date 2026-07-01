@@ -63,6 +63,21 @@ def generate_launch_description():
             DeclareLaunchArgument("robot_namespace"),
             DeclareLaunchArgument("environment", default_value="sim"),
             DeclareLaunchArgument("localization", default_value="real"),
+<<<<<<< HEAD
+=======
+            DeclareLaunchArgument("localization_frame_convention", default_value="ned"),
+            DeclareLaunchArgument("odom_topic", default_value=""),
+            DeclareLaunchArgument("twist_odom_topic", default_value=""),
+            DeclareLaunchArgument("altitude_topic", default_value=""),
+            DeclareLaunchArgument("navigator_topic", default_value=""),
+            DeclareLaunchArgument("legacy_navigator_topic", default_value=""),
+            DeclareLaunchArgument("odom_twist_in_body_frame", default_value="true"),
+            DeclareLaunchArgument("odom_invert_angular_z", default_value="true"),
+            DeclareLaunchArgument("twist_odom_twist_in_body_frame", default_value="true"),
+            DeclareLaunchArgument("twist_odom_invert_angular_z", default_value="false"),
+            DeclareLaunchArgument("linear_lpf_alpha", default_value="0.2"),
+            DeclareLaunchArgument("use_tf_fallback", default_value="false"),
+>>>>>>> c98dbcf (add changes)
             DeclareLaunchArgument("publish_tf", default_value="false"),
             DeclareLaunchArgument("setpoint_input_topic", default_value=""),
             DeclareLaunchArgument("setpoint_output_topic", default_value=""),
