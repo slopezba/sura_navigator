@@ -1,6 +1,10 @@
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "geometry_msgs/msg/accel.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
@@ -30,6 +34,8 @@ public:
     declare_parameter<std::string>("parent_frame", "world_ned");
     declare_parameter<std::string>("child_frame", "cirtesub/base_link");
     declare_parameter<bool>("publish_tf", true);
+    declare_parameter<std::vector<double>>(
+      "velocity_filter_alpha", std::vector<double>(kVelocityAxisCount, 1.0));
 
     odom_topic_ = get_parameter("odom_topic").as_string();
     altitude_topic_ = get_parameter("altitude_topic").as_string();
@@ -37,6 +43,7 @@ public:
     parent_frame_ = get_parameter("parent_frame").as_string();
     child_frame_ = get_parameter("child_frame").as_string();
     publish_tf_ = get_parameter("publish_tf").as_bool();
+    loadVelocityFilterAlpha();
 
     navigator_pub_ = create_publisher<sura_msgs::msg::Navigator>(navigator_topic_, 10);
     odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
@@ -52,6 +59,11 @@ public:
     RCLCPP_INFO(get_logger(), "Reading odometry from: %s", odom_topic_.c_str());
     RCLCPP_INFO(get_logger(), "Reading DVL altitude from: %s", altitude_topic_.c_str());
     RCLCPP_INFO(get_logger(), "Publishing navigator to: %s", navigator_topic_.c_str());
+    RCLCPP_INFO(
+      get_logger(),
+      "Velocity filter alpha [x, y, z, roll, pitch, yaw]: [%.3f, %.3f, %.3f, %.3f, %.3f, %.3f]",
+      velocity_filter_alpha_[0], velocity_filter_alpha_[1], velocity_filter_alpha_[2],
+      velocity_filter_alpha_[3], velocity_filter_alpha_[4], velocity_filter_alpha_[5]);
     if (publish_tf_) {
       RCLCPP_INFO(
         get_logger(), "Publishing TF: %s -> %s", parent_frame_.c_str(), child_frame_.c_str());
@@ -59,9 +71,16 @@ public:
   }
 
 private:
+  static constexpr std::size_t kVelocityAxisCount = 6;
+
   static double wrapAngle(double angle)
   {
     return std::atan2(std::sin(angle), std::cos(angle));
+  }
+
+  static double lowPass(double raw, double previous, double alpha)
+  {
+    return alpha * raw + (1.0 - alpha) * previous;
   }
 
   static geometry_msgs::msg::Vector3 toVector3(const tf2::Vector3 & vector)
@@ -86,6 +105,29 @@ private:
   void handleAltitude(const sensor_msgs::msg::Range::SharedPtr msg)
   {
     altitude_ = msg->range;
+  }
+
+  void loadVelocityFilterAlpha()
+  {
+    const auto values = get_parameter("velocity_filter_alpha").as_double_array();
+    if (values.size() != kVelocityAxisCount) {
+      RCLCPP_WARN(
+        get_logger(),
+        "velocity_filter_alpha must contain 6 values [x, y, z, roll, pitch, yaw]. "
+        "Using defaults without filtering.");
+      return;
+    }
+
+    for (std::size_t i = 0; i < kVelocityAxisCount; ++i) {
+      const double clamped = std::clamp(values[i], 0.0, 1.0);
+      if (clamped != values[i]) {
+        RCLCPP_WARN(
+          get_logger(),
+          "velocity_filter_alpha[%zu] is %.3f, outside [0.0, 1.0]. Clamping to %.3f.",
+          i, values[i], clamped);
+      }
+      velocity_filter_alpha_[i] = clamped;
+    }
   }
 
   void handleOdometry(const nav_msgs::msg::Odometry::SharedPtr msg)
@@ -138,10 +180,33 @@ private:
       odom_msg.twist.twist.angular.y,
       odom_msg.twist.twist.angular.z);
 
-    navigator_msg.ned_velocity.linear = toVector3(ned_linear);
-    navigator_msg.ned_velocity.angular = toVector3(angular);
-    navigator_msg.body_velocity.linear = toVector3(body_linear);
-    navigator_msg.body_velocity.angular = toVector3(angular);
+    tf2::Vector3 filtered_body_linear = body_linear;
+    tf2::Vector3 filtered_angular = angular;
+    if (has_filtered_velocity_) {
+      filtered_body_linear.setX(
+        lowPass(body_linear.x(), filtered_body_velocity_.linear.x, velocity_filter_alpha_[0]));
+      filtered_body_linear.setY(
+        lowPass(body_linear.y(), filtered_body_velocity_.linear.y, velocity_filter_alpha_[1]));
+      filtered_body_linear.setZ(
+        lowPass(body_linear.z(), filtered_body_velocity_.linear.z, velocity_filter_alpha_[2]));
+      filtered_angular.setX(
+        lowPass(angular.x(), filtered_body_velocity_.angular.x, velocity_filter_alpha_[3]));
+      filtered_angular.setY(
+        lowPass(angular.y(), filtered_body_velocity_.angular.y, velocity_filter_alpha_[4]));
+      filtered_angular.setZ(
+        lowPass(angular.z(), filtered_body_velocity_.angular.z, velocity_filter_alpha_[5]));
+    } else {
+      has_filtered_velocity_ = true;
+    }
+
+    const tf2::Vector3 filtered_ned_linear = rotation_matrix * filtered_body_linear;
+
+    navigator_msg.body_velocity.linear = toVector3(filtered_body_linear);
+    navigator_msg.body_velocity.angular = toVector3(filtered_angular);
+    navigator_msg.ned_velocity.linear = toVector3(filtered_ned_linear);
+    navigator_msg.ned_velocity.angular = toVector3(filtered_angular);
+
+    filtered_body_velocity_ = navigator_msg.body_velocity;
 
     return navigator_msg;
   }
@@ -212,6 +277,8 @@ private:
   std::string child_frame_;
   bool publish_tf_{false};
   float altitude_{0.0F};
+  std::array<double, kVelocityAxisCount> velocity_filter_alpha_{{
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0}};
 
   rclcpp::Publisher<sura_msgs::msg::Navigator>::SharedPtr navigator_pub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
@@ -222,6 +289,8 @@ private:
   rclcpp::Time previous_stamp_{0, 0, RCL_ROS_TIME};
   geometry_msgs::msg::Twist previous_body_velocity_;
   geometry_msgs::msg::Twist previous_ned_velocity_;
+  bool has_filtered_velocity_{false};
+  geometry_msgs::msg::Twist filtered_body_velocity_;
 };
 
 }  // namespace sura_navigator
