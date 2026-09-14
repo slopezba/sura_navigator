@@ -4,21 +4,39 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
+def bool_launch_arg(context, name):
+    value = LaunchConfiguration(name).perform(context).lower()
+    if value in ("true", "1", "yes", "on"):
+        return True
+    if value in ("false", "0", "no", "off"):
+        return False
+
+    raise RuntimeError(
+        f"Unsupported value '{value}' for launch argument '{name}'. Use true or false."
+    )
+
+
 def launch_setup(context, *args, **kwargs):
     robot_namespace = LaunchConfiguration("robot_namespace").perform(context).strip("/")
     if not robot_namespace:
         raise RuntimeError("Launch argument 'robot_namespace' cannot be empty.")
 
     environment = LaunchConfiguration("environment").perform(context)
+    localization = LaunchConfiguration("localization").perform(context)
+    publish_tf = bool_launch_arg(context, "publish_tf")
 
     if environment not in ("sim", "real"):
         raise RuntimeError(
             f"Unsupported environment '{environment}'. Use 'sim' or 'real'."
         )
+    if localization not in ("sim", "real"):
+        raise RuntimeError(
+            f"Unsupported localization '{localization}'. Use 'sim' or 'real'."
+        )
 
     odom_topic = (
         f"/{robot_namespace}/stonefish/odometry"
-        if environment == "sim"
+        if localization == "sim"
         else f"/{robot_namespace}/odometry/filtered"
     )
 
@@ -28,7 +46,7 @@ def launch_setup(context, *args, **kwargs):
         "navigator_topic": f"/{robot_namespace}/navigator/navigation",
         "parent_frame": "world_ned",
         "child_frame": f"{robot_namespace}/base_link",
-        "publish_tf": environment == "sim",
+        "publish_tf": publish_tf,
     }
 
     adapter_parameters = {
