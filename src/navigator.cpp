@@ -128,21 +128,20 @@ private:
     navigator_msg.rpy.y = pitch;
     navigator_msg.rpy.z = yaw;
 
-    const tf2::Vector3 ned_linear(
+    const tf2::Vector3 body_linear(
       odom_msg.twist.twist.linear.x,
       odom_msg.twist.twist.linear.y,
       odom_msg.twist.twist.linear.z);
-    const tf2::Vector3 body_linear = rotation_matrix.transpose() * ned_linear;
 
-    const tf2::Vector3 angular(
+    const tf2::Vector3 body_angular(
       odom_msg.twist.twist.angular.x,
       odom_msg.twist.twist.angular.y,
       odom_msg.twist.twist.angular.z);
 
-    navigator_msg.ned_velocity.linear = toVector3(ned_linear);
-    navigator_msg.ned_velocity.angular = toVector3(angular);
     navigator_msg.body_velocity.linear = toVector3(body_linear);
-    navigator_msg.body_velocity.angular = toVector3(angular);
+    navigator_msg.body_velocity.angular = toVector3(body_angular);
+    navigator_msg.ned_velocity.linear = toVector3(rotation_matrix * body_linear);
+    navigator_msg.ned_velocity.angular = toVector3(rotation_matrix * body_angular);
 
     return navigator_msg;
   }
