@@ -42,7 +42,7 @@ def launch_setup(context, *args, **kwargs):
 
     parameters = {
         "odom_topic": odom_topic,
-        "altitude_topic": f"/{robot_namespace}/sensors/dvl/altitude",
+        "altitude_topic": f"/{robot_namespace}/sensors/altitude",
         "navigator_topic": f"/{robot_namespace}/navigator/navigation",
         "parent_frame": "world_ned",
         "child_frame": f"{robot_namespace}/base_link",

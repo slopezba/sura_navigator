@@ -1,4 +1,5 @@
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -211,7 +212,7 @@ private:
   std::string parent_frame_;
   std::string child_frame_;
   bool publish_tf_{false};
-  float altitude_{0.0F};
+  float altitude_{std::numeric_limits<float>::quiet_NaN()};
 
   rclcpp::Publisher<sura_msgs::msg::Navigator>::SharedPtr navigator_pub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
