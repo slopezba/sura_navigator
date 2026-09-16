@@ -51,9 +51,9 @@ def launch_setup(context, *args, **kwargs):
 
     adapter_parameters = {
         "input_topic": LaunchConfiguration("setpoint_input_topic").perform(context)
-        or "body_position/setpoint_world",
+        or "position_hold/setpoint_world",
         "output_topic": LaunchConfiguration("setpoint_output_topic").perform(context)
-        or "controller/body_position/setpoint",
+        or "controller/position_hold/setpoint",
         "target_frame": LaunchConfiguration("setpoint_target_frame"),
         "transform_timeout": LaunchConfiguration("setpoint_transform_timeout"),
     }
